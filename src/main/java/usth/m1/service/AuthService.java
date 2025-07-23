@@ -23,7 +23,7 @@ public class AuthService {
     public Uni<String> getAccessToken() {
 
         return authProxy.getToken("client_credentials", clientId, clientSecret)
-                .onItem().transform(OAuthTokenResponse::getAccess_token);
+                .onItem().transform(OAuthTokenResponse::access_token);
 
     }
 }
