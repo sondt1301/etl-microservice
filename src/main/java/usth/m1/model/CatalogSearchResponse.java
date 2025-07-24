@@ -4,4 +4,8 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
-public record CatalogSearchResponse(List<JsonObject> features) {}
+public record CatalogSearchResponse(
+        List<JsonObject> features,
+        List<JsonObject> links,
+        JsonObject context
+) {}

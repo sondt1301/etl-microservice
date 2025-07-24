@@ -20,7 +20,7 @@ public class SentinelResource {
 
     @GET
     @Path("/red-river")
-    public Uni<JsonObject> redRiverSearch() {
+    public Uni<CatalogSearchResponse> redRiverSearch() {
         BoundingBox box = new BoundingBox(105.5, 20.5, 106.2, 21.5);
         return sentinelService.searchCatalog(box);
     }
