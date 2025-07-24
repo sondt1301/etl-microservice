@@ -25,19 +25,21 @@ public class SentinelService {
     public Uni<CatalogSearchResponse> searchCatalog(BoundingBox box) {
         return authService.getAccessToken()
                 .flatMap(token -> {
-                    Map<String, Object> body = new HashMap<>();
-                    body.put("collections", List.of("sentinel-2-l2a"));
-                    body.put("bbox", List.of(box.west(), box.south(), box.east(), box.north()));
-                    body.put("limit", 25);
-                    body.put("datetime", "2023-01-01T00:00:00Z/2023-01-31T23:59:59Z");
-                    body.put("fields", Map.of());
+                    CatalogSearchRequest request = new CatalogSearchRequest(
+                            List.of(box.west(), box.south(), box.east(), box.north()),
+                            "2023-01-01T00:00:00Z/2023-01-31T23:59:59Z",
+                            List.of("sentinel-2-l2a"),
+                            25,
+                            Map.of(),
+                            null
+                    );
 
-                    return fetchPages("Bearer " + token, body, new ArrayList<>(), new ArrayList<>(), new JsonObject(), new AtomicInteger());
+                    return fetchPages("Bearer " + token, request, new ArrayList<>(), new ArrayList<>(), new JsonObject(), new AtomicInteger());
                 });
     }
 
-    private Uni<CatalogSearchResponse> fetchPages(String bearerToken, Map<String, Object> body, List<JsonObject> allFeatures, List<JsonObject> allLinks, JsonObject allContext, AtomicInteger totalReturned) {
-        return catalogProxy.search(bearerToken, body)
+    private Uni<CatalogSearchResponse> fetchPages(String bearerToken, CatalogSearchRequest request, List<JsonObject> allFeatures, List<JsonObject> allLinks, JsonObject allContext, AtomicInteger totalReturned) {
+        return catalogProxy.search(bearerToken, request)
                 .flatMap(response -> {
                     if (response.features() != null) {
                         allFeatures.addAll(response.features());
@@ -60,8 +62,15 @@ public class SentinelService {
                             JsonObject nextBody = nextLink.get().getJsonObject("body");
                             if (nextBody != null && nextBody.containsKey("next")) {
                                 int nextValue = nextBody.getInteger("next");
-                                body.put("next", nextValue);
-                                return fetchPages(bearerToken, body, allFeatures, allLinks, allContext,  totalReturned);
+                                CatalogSearchRequest nextRequest = new CatalogSearchRequest(
+                                        request.bbox(),
+                                        request.datetime(),
+                                        request.collections(),
+                                        request.limit(),
+                                        request.fields(),
+                                        nextValue
+                                );
+                                return fetchPages(bearerToken, nextRequest, allFeatures, allLinks, allContext,  totalReturned);
                             }
                         }
                     }

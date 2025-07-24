@@ -4,9 +4,10 @@ import java.util.List;
 import java.util.Map;
 
 public record CatalogSearchRequest(
-        Map<String, Object> bbox,
-        Map<String, Object> datetime,
+        List<Double> bbox,
+        String datetime,
         List<String> collections,
-        int limit,
-        List<String> fields
+        Integer limit,
+        Map<String, Object> fields,
+        Integer next
 ) {}

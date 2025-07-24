@@ -17,5 +17,5 @@ public interface CatalogProxy {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/geo+json")
     @Path("/search")
-    Uni<CatalogSearchResponse> search(@HeaderParam("Authorization") String bearerToken, Map<String, Object> body);
+    Uni<CatalogSearchResponse> search(@HeaderParam("Authorization") String bearerToken, CatalogSearchRequest rquest);
 }
