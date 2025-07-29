@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ApplicationScoped
-public class SentinelService {
+public class CatalogService {
     @Inject
     AuthService authService;
 
@@ -29,9 +29,17 @@ public class SentinelService {
                             List.of(box.west(), box.south(), box.east(), box.north()),
                             "2023-01-01T00:00:00Z/2023-01-31T23:59:59Z",
                             List.of("sentinel-2-l2a"),
-                            25,
+                            100,
                             Map.of(),
-                            null
+                            null,
+                            Map.of(
+                                    "op", "<=",
+                                    "args", List.of(
+                                            Map.of("property", "eo:cloud_cover"),
+                                            20
+                                    )
+                            ),
+                            "cql2-json"
                     );
 
                     return fetchPages("Bearer " + token, request, new ArrayList<>(), new ArrayList<>(), new JsonObject(), new AtomicInteger());
@@ -68,7 +76,9 @@ public class SentinelService {
                                         request.collections(),
                                         request.limit(),
                                         request.fields(),
-                                        nextValue
+                                        nextValue,
+                                        request.filter(),
+                                        request.filterLang()
                                 );
                                 return fetchPages(bearerToken, nextRequest, allFeatures, allLinks, allContext,  totalReturned);
                             }

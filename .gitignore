@@ -45,3 +45,4 @@ nb-configuration.xml
 .certs/
 
 **/application.properties
+images/
