@@ -10,7 +10,7 @@ public record CatalogSearchRequest(
         String datetime,
         List<String> collections,
         Integer limit,
-        Map<String, Object> fields,
+//        Map<String, Object> fields,
         Integer next,
         Map<String, Object> filter,
 

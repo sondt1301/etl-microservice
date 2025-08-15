@@ -30,7 +30,7 @@ public class CatalogService {
                             "2023-01-01T00:00:00Z/2023-01-31T23:59:59Z",
                             List.of("sentinel-2-l2a"),
                             100,
-                            Map.of(),
+//                            Map.of(),
                             null,
                             Map.of(
                                     "op", "<=",
@@ -75,7 +75,7 @@ public class CatalogService {
                                         request.datetime(),
                                         request.collections(),
                                         request.limit(),
-                                        request.fields(),
+//                                        request.fields(),
                                         nextValue,
                                         request.filter(),
                                         request.filterLang()

@@ -10,6 +10,8 @@ import usth.m1.model.ProcessRequest;
 import usth.m1.proxy.ProcessProxy;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,9 @@ public class ProcessService {
     @RestClient
     ProcessProxy processProxy;
 
+    @Inject
+    CatalogMetadataService catalogMetadataService;
+
     public Uni<Void> downloadTrueColorImages(List<JsonObject> features) {
         return authService.getAccessToken()
                 .flatMap(token -> {
@@ -31,20 +36,7 @@ public class ProcessService {
 
                     for (JsonObject feature : features) {
                         chain = chain.chain(() -> {
-                            Map<String, Object> input = new HashMap<>();
-                            input.put("bounds", Map.of(
-                                    "bbox", feature.getJsonArray("bbox").getList(),
-                                    "properties", Map.of("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
-                            ));
-                            input.put("data", List.of(Map.of(
-                                    "type", "sentinel-2-l2a",
-                                    "dataFilter", Map.of(
-                                            "timeRange", Map.of(
-                                                    "from", feature.getJsonObject("properties").getString("datetime"),
-                                                    "to",  feature.getJsonObject("properties").getString("datetime")
-                                            )
-                                    )
-                            )));
+                            Map<String, Object> input = buidInput(feature);
 
                             Map<String, Object> output = Map.of(
                                     "width", 512,
@@ -74,16 +66,12 @@ public class ProcessService {
                             """;
 
                             ProcessRequest processRequest = new ProcessRequest(input, output, evalscript);
+                            String id = feature.getString("id");
+                            String filename = "images/true-color/" + id + ".png";
+
                             return processProxy.fetchTrueColor("Bearer " + token, processRequest)
-                                    .onItem().transformToUni(imageBytes -> {
-                                        String fileName = "images/true-color/" + feature.getString("id") + ".png";
-                                        try {
-                                            java.nio.file.Files.write(java.nio.file.Path.of(fileName), imageBytes);
-                                            return Uni.createFrom().voidItem();
-                                        } catch (IOException e) {
-                                            return Uni.createFrom().failure(new RuntimeException("Failed to write image: " + fileName, e));
-                                        }
-                                    });
+                                    .onItem().transformToUni(imageBytes -> writeFile(filename, imageBytes))
+                                    .chain(() -> catalogMetadataService.linkTrueColor(id, filename));
                         });
                     }
                     return chain;
@@ -97,23 +85,7 @@ public class ProcessService {
 
                     for (JsonObject feature : features) {
                         chain = chain.chain(() -> {
-                            Map<String, Object> input = new HashMap<>();
-                            input.put("bounds", Map.of(
-                                    "bbox", feature.getJsonArray("bbox").getList(),
-                                    "properties", Map.of("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
-                            ));
-                            input.put("data", List.of(Map.of(
-                                    "type", "sentinel-2-l2a",
-                                    "dataFilter", Map.of(
-                                            "timeRange", Map.of(
-                                                    "from", feature.getJsonObject("properties").getString("datetime"),
-                                                    "to",  feature.getJsonObject("properties").getString("datetime")
-                                            ),
-                                        "processing", Map.of(
-                                                "harmonizeValues", "false"
-                                            )
-                                    )
-                            )));
+                            Map<String, Object> input = buidInput(feature, true);
 
                             Map<String, Object> output = Map.of(
                                     "width", 512,
@@ -161,20 +133,57 @@ public class ProcessService {
                             """;
 
                             ProcessRequest processRequest = new ProcessRequest(input, output, evalscript);
+                            String id = feature.getString("id");
+                            String filename = "images/raw/" + id + ".tiff";
+
                             return processProxy.fetchRaw("Bearer " + token, processRequest)
-                                    .onItem().transformToUni(imageBytes -> {
-                                        String fileName = "images/raw/" + feature.getString("id") + ".tiff";
-                                        try {
-                                            java.nio.file.Files.write(java.nio.file.Path.of(fileName), imageBytes);
-                                            return Uni.createFrom().voidItem();
-                                        } catch (IOException e) {
-                                            return Uni.createFrom().failure(new RuntimeException("Failed to write image: " + fileName, e));
-                                        }
-                                    });
+                                    .onItem().transformToUni(imageBytes -> writeFile(filename, imageBytes))
+                                    .chain(() -> catalogMetadataService.linkRaw(id, filename));
                         });
                     }
                     return chain;
                 });
+    }
+
+    private static Map<String, Object> buidInput(JsonObject feature) {
+        return buidInput(feature, false);
+    }
+
+    private static Map<String, Object> buidInput(JsonObject feature, boolean raw) {
+        Map<String, Object> input = new HashMap<>();
+        input.put("bounds", Map.of(
+                "bbox", feature.getJsonArray("bbox").getList(),
+                "properties", Map.of("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
+        ));
+
+        Map<String, Object> dataFilter = new HashMap<>();
+        dataFilter.put("timeRange", Map.of(
+                "from", feature.getJsonObject("properties").getString("datetime"),
+                "to",  feature.getJsonObject("properties").getString("datetime")
+        ));
+
+        input.put("data", List.of(Map.of(
+                "type", "sentinel-2-l2a",
+                "dataFilter", dataFilter
+                )
+        ));
+
+        if (raw) {
+            dataFilter.put("processing", Map.of("harmonizeValues", "false"));
+        }
+
+        return input;
+    }
+
+    private static Uni<Void> writeFile(String path, byte[] bytes) {
+        try {
+            Path p = Path.of(path);
+            Files.createDirectories(p.getParent());
+            Files.write(p, bytes);
+            return Uni.createFrom().voidItem();
+        } catch (IOException e) {
+            return Uni.createFrom().failure(new RuntimeException("Failed to write image: " + path, e));
+        }
     }
 
 }
