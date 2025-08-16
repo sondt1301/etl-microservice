@@ -11,7 +11,7 @@ import usth.m1.model.ULakeLoginRequest;
 import usth.m1.model.ULakeLoginResponse;
 
 @Path("/auth")
-@RegisterRestClient(configKey = "ulake-api")
+@RegisterRestClient(configKey = "ulake-auth-api")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public interface ULakeAuthProxy {
