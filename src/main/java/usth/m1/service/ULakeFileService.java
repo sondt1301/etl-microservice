@@ -1,6 +1,5 @@
 package usth.m1.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -11,11 +10,15 @@ import usth.m1.model.ULakeFileUploadRequest;
 import usth.m1.model.ULakeFolderInfo;
 import usth.m1.proxy.ULakeFileProxy;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,16 +32,20 @@ public class ULakeFileService {
     @RestClient
     ULakeFileProxy fileProxy;
 
-    @Inject
-    ObjectMapper objectMapper;
-
-    public Uni<Void> uploadTrueColorFile(Path folderPath, long parentId) {
+    public Uni<Void> uploadImages(Path folderPath, long parentId, ImageType type) {
         return authService.getAccessToken()
                 .flatMap(token -> {
                     try (Stream<Path> paths = Files.list(folderPath)) {
                         List<Uni<Response>> uploads = paths
                                 .filter(Files::isRegularFile)
-                                .map(path -> uploadSingleImage(token, path, parentId))
+                                .map(path -> {
+                                    try {
+                                        File fileToUpload = type.requiresDownsampling ? downsampleWithGDAL(path) : path.toFile();
+                                        return uploadGenericImage(token, fileToUpload, path.getFileName().toString(), parentId, type.mimeType);
+                                    } catch (IOException | InterruptedException e) {
+                                        return failedUpload(e);
+                                    }
+                                })
                                 .collect(Collectors.toList());
 
                         return Uni.combine().all().unis(uploads).discardItems();
@@ -48,33 +55,75 @@ public class ULakeFileService {
                 });
     }
 
-    private Uni<Response> uploadSingleImage(String token, Path path, long parentId) {
-        try {
-            long fileSize = Files.size(path);
-            String fileName = path.getFileName().toString();
-            long creationTime = Instant.now().toEpochMilli();
+    private Uni<Response> failedUpload(Throwable e) {
+        return Uni.createFrom().failure(e);
+    }
 
-            ULakeFileInfo info = new ULakeFileInfo(
-                    null,
-                    creationTime,
-                    null,
-                    "image/png",
-                    fileName,
-                    null,
-                    new ULakeFolderInfo(parentId, null, null, null, null, null),
-                    fileSize
-            );
+    private Uni<Response> uploadGenericImage(String token, File file, String originalName, long parentId, String mimeType) {
+        long fileSize = file.length();
+        long creationTime = Instant.now().toEpochMilli();
 
+        ULakeFileInfo info = new ULakeFileInfo(
+                null, creationTime, null, mimeType,
+                originalName, null,
+                new ULakeFolderInfo(parentId, null, null, null, null, null),
+                fileSize
+        );
 
-            ULakeFileUploadRequest form = new ULakeFileUploadRequest();
-            form.file = path.toFile();
-            form.fileInfo = info;
+        ULakeFileUploadRequest form = new ULakeFileUploadRequest();
+        form.file = file;
+        form.fileInfo = info;
 
-            return fileProxy.uploadFile("Bearer " + token, form);
+        return fileProxy.uploadFile("Bearer " + token, form);
+    }
 
-        } catch (IOException e) {
-            return Uni.createFrom().failure(e);
+    public enum ImageType {
+        TRUE_COLOR("image/png", false),
+        RAW("image/tiff", true);
+
+        public final String mimeType;
+        public final boolean requiresDownsampling;
+
+        ImageType(String mimeType, boolean requiresDownsampling) {
+            this.mimeType = mimeType;
+            this.requiresDownsampling = requiresDownsampling;
         }
+    }
+
+    private File downsampleWithGDAL(Path originalPath) throws IOException, InterruptedException {
+        String inputPath = originalPath.toAbsolutePath().toString();
+        String outputPath = Files.createTempFile("downsampled-", ".tiff").toAbsolutePath().toString();
+
+        ProcessBuilder pb = new ProcessBuilder(
+                "D:\\Study Apps\\release-1928-x64-gdal-3-11-3-mapserver-8-4-0\\bin\\gdal\\apps\\gdal_translate.exe",
+                "-outsize", "30%", "30%",
+                inputPath,
+                outputPath
+        );
+
+        Map<String, String> env = pb.environment();
+        env.put("PATH", env.get("PATH") + ";D:\\Study Apps\\release-1928-x64-gdal-3-11-3-mapserver-8-4-0\\bin");
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+
+        int exitCode = process.waitFor();
+        System.out.println("[GDAL LOG] Exit code: " + exitCode);
+        System.out.println("[GDAL LOG] Output:\n" + output);
+
+        if (exitCode != 0) {
+            throw new IOException("GDAL downsampling failed for " + inputPath + "\n\nFull output:\n" + output);
+        }
+
+        return new File(outputPath);
     }
 
 }
