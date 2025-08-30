@@ -27,19 +27,19 @@ public class CatalogService {
                 .flatMap(token -> {
                     CatalogSearchRequest request = new CatalogSearchRequest(
                             List.of(box.west(), box.south(), box.east(), box.north()),
-                            "2023-01-01T00:00:00Z/2023-01-31T23:59:59Z",
+                            "2023-01-01T00:00:00Z/2024-01-01T00:00:00Z",
                             List.of("sentinel-2-l2a"),
                             100,
 //                            Map.of(),
-                            null,
-                            Map.of(
-                                    "op", "<=",
-                                    "args", List.of(
-                                            Map.of("property", "eo:cloud_cover"),
-                                            20
-                                    )
-                            ),
-                            "cql2-json"
+                            null
+//                            Map.of(
+//                                    "op", "<=",
+//                                    "args", List.of(
+//                                            Map.of("property", "eo:cloud_cover"),
+//                                            20
+//                                    )
+//                            ),
+//                            "cql2-json"
                     );
 
                     return fetchPages("Bearer " + token, request, new ArrayList<>(), new ArrayList<>(), new JsonObject(), new AtomicInteger());
@@ -76,9 +76,9 @@ public class CatalogService {
                                         request.collections(),
                                         request.limit(),
 //                                        request.fields(),
-                                        nextValue,
-                                        request.filter(),
-                                        request.filterLang()
+                                        nextValue
+//                                        request.filter(),
+//                                        request.filterLang()
                                 );
                                 return fetchPages(bearerToken, nextRequest, allFeatures, allLinks, allContext,  totalReturned);
                             }

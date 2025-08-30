@@ -24,18 +24,28 @@ public class ProcessResource {
     @POST
     @Path("/red-river/download")
     public Uni<Void> processAllTrueColorImages() {
+        long startTime = System.currentTimeMillis();
         BoundingBox box = new BoundingBox(105.5, 20.5, 106.2, 21.5);
         return catalogService.searchCatalog(box)
                 .flatMap(response -> catalogMetadataService.upsertAll(response.features()).replaceWith(response.features()))
-                .flatMap(features -> processService.downloadTrueColorImages(features));
+                .flatMap(features -> processService.downloadTrueColorImages(features))
+                .invoke(() -> {
+                    long duration = System.currentTimeMillis() - startTime;
+                    System.out.println("True-color image download completed in " + duration + " ms");
+                });
     }
 
     @POST
     @Path("/red-river/download/raw")
     public Uni<Void> processAllRawImages() {
+        long startTime = System.currentTimeMillis();
         BoundingBox box = new BoundingBox(105.5, 20.5, 106.2, 21.5);
         return catalogService.searchCatalog(box)
                 .flatMap(response -> catalogMetadataService.upsertAll(response.features()).replaceWith(response.features()))
-                .flatMap(features -> processService.downloadRawImages(features));
+                .flatMap(features -> processService.downloadRawImages(features))
+                .invoke(() -> {
+                    long duration = System.currentTimeMillis() - startTime;
+                    System.out.println("Raw image download completed in " + duration + " ms");
+                });
     }
 }

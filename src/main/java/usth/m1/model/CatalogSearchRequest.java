@@ -11,9 +11,9 @@ public record CatalogSearchRequest(
         List<String> collections,
         Integer limit,
 //        Map<String, Object> fields,
-        Integer next,
-        Map<String, Object> filter,
-
-        @JsonProperty("filter-lang")
-        String filterLang
+        Integer next
+//        Map<String, Object> filter,
+//
+//        @JsonProperty("filter-lang")
+//        String filterLang
 ) {}

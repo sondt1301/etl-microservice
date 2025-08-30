@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -124,6 +125,45 @@ public class ULakeFileService {
         }
 
         return new File(outputPath);
+    }
+
+
+
+    public void testDownsamplingTotalTime(Path folderPath) {
+        long totalStart = System.currentTimeMillis();
+
+        try (Stream<Path> paths = Files.list(folderPath)) {
+            List<File> outputFiles = paths
+                    .filter(Files::isRegularFile)
+                    .map(path -> {
+                        try {
+                            System.out.println("[✓] Processing: " + path.getFileName());
+                            File output = downsampleWithGDAL(path);
+                            System.out.println("    → Saved as: " + output.getAbsolutePath());
+                            return output;
+                        } catch (Exception e) {
+                            System.err.println("[✗] Failed: " + path.getFileName());
+                            e.printStackTrace();
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            long totalEnd = System.currentTimeMillis();
+            System.out.println("\n✅ Finished " + outputFiles.size() + " downsampling(s)");
+            System.out.println("⏱ Total time: " + (totalEnd - totalStart) + " ms");
+
+        } catch (IOException e) {
+            System.err.println("Error reading folder: " + e.getMessage());
+        }
+    }
+
+
+    public static void main(String[] args) {
+        ULakeFileService service = new ULakeFileService();
+        Path folder = Path.of("images/raw");
+        service.testDownsamplingTotalTime(folder);
     }
 
 }
