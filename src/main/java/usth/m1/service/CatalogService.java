@@ -27,7 +27,7 @@ public class CatalogService {
                 .flatMap(token -> {
                     CatalogSearchRequest request = new CatalogSearchRequest(
                             List.of(box.west(), box.south(), box.east(), box.north()),
-                            "2023-01-01T00:00:00Z/2023-03-01T00:00:00Z",
+                            "2023-01-01T00:00:00Z/2023-01-15T00:00:00Z",
                             List.of("sentinel-2-l2a"),
                             100,
 //                            Map.of(),

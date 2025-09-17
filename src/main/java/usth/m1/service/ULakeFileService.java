@@ -137,12 +137,12 @@ public class ULakeFileService {
                     .filter(Files::isRegularFile)
                     .map(path -> {
                         try {
-                            System.out.println("[✓] Processing: " + path.getFileName());
+                            System.out.println("Processing: " + path.getFileName());
                             File output = downsampleWithGDAL(path);
-                            System.out.println("    → Saved as: " + output.getAbsolutePath());
+                            System.out.println("Saved as: " + output.getAbsolutePath());
                             return output;
                         } catch (Exception e) {
-                            System.err.println("[✗] Failed: " + path.getFileName());
+                            System.err.println("Failed: " + path.getFileName());
                             e.printStackTrace();
                             return null;
                         }
@@ -151,8 +151,8 @@ public class ULakeFileService {
                     .toList();
 
             long totalEnd = System.currentTimeMillis();
-            System.out.println("\n✅ Finished " + outputFiles.size() + " downsampling(s)");
-            System.out.println("⏱ Total time: " + (totalEnd - totalStart) + " ms");
+            System.out.println("\nFinished " + outputFiles.size() + " downsampling(s)");
+            System.out.println("Total time: " + (totalEnd - totalStart) + " ms");
 
         } catch (IOException e) {
             System.err.println("Error reading folder: " + e.getMessage());

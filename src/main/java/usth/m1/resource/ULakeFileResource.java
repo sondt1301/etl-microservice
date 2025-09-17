@@ -23,6 +23,7 @@ public class ULakeFileResource {
     @Path("/true-color")
     @Blocking
     public Uni<Response> uploadTrueColorImages() {
+        long startTime = System.currentTimeMillis();
         java.nio.file.Path folder = java.nio.file.Path.of("images/true-color");
 
         return ulakeFolderService.createTrueColorFolder()
@@ -30,7 +31,11 @@ public class ULakeFileResource {
                     Long folderId = resp.resp().id();
                     return ulakeFileService.uploadImages(folder, folderId, ULakeFileService.ImageType.TRUE_COLOR)
                             .flatMap(_void -> ulakeFolderService.getFolderById(folderId))
-                            .map(updatedFolder -> Response.ok(new ULakeFolderResponse(200, "Upload completed", updatedFolder.resp())).build());
+                            .map(updatedFolder -> Response.ok(new ULakeFolderResponse(200, "Upload completed", updatedFolder.resp())).build())
+                            .invoke(() -> {
+                                long duration = System.currentTimeMillis() - startTime;
+                                System.out.println("True-color image upload completed in " + duration + " ms");
+                            });
                 });
     }
 
@@ -38,6 +43,7 @@ public class ULakeFileResource {
     @Path("/raw")
     @Blocking
     public Uni<Response> uploadRawImages() {
+        long startTime = System.currentTimeMillis();
         java.nio.file.Path folder = java.nio.file.Path.of("images/raw");
 
         return ulakeFolderService.createRawFolder()
@@ -45,7 +51,11 @@ public class ULakeFileResource {
                     Long folderId = resp.resp().id();
                     return ulakeFileService.uploadImages(folder, folderId, ULakeFileService.ImageType.RAW)
                             .flatMap(_void -> ulakeFolderService.getFolderById(folderId))
-                            .map(updatedFolder -> Response.ok(new ULakeFolderResponse(200, "Upload completed", updatedFolder.resp())).build());
+                            .map(updatedFolder -> Response.ok(new ULakeFolderResponse(200, "Upload completed", updatedFolder.resp())).build())
+                            .invoke(() -> {
+                                long duration = System.currentTimeMillis() - startTime;
+                                System.out.println("Raw image upload completed in " + duration + " ms");
+                            });
                 });
     }
 }
